@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2028 대입 식품계열 내신 커트라인 예측 시스템 | 인공지능 기초</title>
+  <meta name="description" content="대학 어디가(adiga.kr) 식품계열 입시 결과를 기반으로 한 지도학습(Supervised Learning) 2028 대입 5등급제 내신 커트라인 예측 프로그램">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="header-left">
+        <div class="logo-badge">AI EDU</div>
+        <div class="header-title">
+          <h1>2028 대입 식품계열 내신 커트라인 예측 프로그램</h1>
+          <p>
+            <span>인공지능 기초 탐구 프로젝트</span>
+            <span class="tag-badge tag-supervised">기계학습: 지도학습 (회귀)</span>
+            <span class="tag-badge tag-target">타깃: 2028 개편 5등급제 합격선</span>
+          </p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="student-tag">
+          신성여고 <strong>조하은 (20827)</strong>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-target="tab-dataset">
+        <span>📊</span> 어디가 수집 데이터 탐색
+      </button>
+      <button class="tab-btn" data-target="tab-ml">
+        <span>🤖</span> 지도학습 모델링 및 성능 분석
+      </button>
+      <button class="tab-btn" data-target="tab-predictor">
+        <span>🎯</span> 2028 내신 합격선 예측기
+      </button>
+      <button class="tab-btn" data-target="tab-reform">
+        <span>📐</span> 2028 대입 개편안(5등급제) 환산
+      </button>
+      <button class="tab-btn" data-target="tab-report">
+        <span>📑</span> 탐구 보고서 요약
+      </button>
+    </div>
+
+    <!-- Quick Stats Bar -->
+    <div class="grid-4" style="margin-bottom: 24px;">
+      <div class="stat-box">
+        <span class="stat-label">수집 표본 학과 수</span>
+        <span class="stat-value" id="stat-total-count">39개</span>
+        <span class="stat-sub">대학 어디가(adiga.kr) 공시 기준</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">평균 취업률</span>
+        <span class="stat-value" id="stat-avg-emp">67.2%</span>
+        <span class="stat-sub">적용 필터: 60% ~ 90% 이상</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">2028 5등급제 평균 컷</span>
+        <span class="stat-value" id="stat-avg-cut2028">1.75등급</span>
+        <span class="stat-sub">현행 70% 컷(2.78) 환산</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">기계학습 모델 결정계수(R²)</span>
+        <span class="stat-value" style="color: var(--accent-cyan);" id="metric-r2">85.4%</span>
+        <span class="stat-sub">다중 선형 회귀 지도학습 적합도</span>
+      </div>
+    </div>
+
+    <!-- TAB 1: DATASET -->
+    <section id="tab-dataset" class="tab-content active">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">
+              <span>📋</span> 대학 어디가(adiga.kr) 식품계열 전형 결과 수집 데이터
+            </div>
+            <div class="card-subtitle">
+              적용 필터: 학과정보(식품 전체) | 취업률(60~90% 이상) | 지역(서울, 경기, 부산, 제주, 충남, 충북)
+            </div>
+          </div>
+          <div>
+            <button class="btn btn-secondary" onclick="downloadCSV()">
+              📥 CSV 데이터셋 다운로드
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="filter-group">
+            <label for="filter-region">지역 필터:</label>
+            <select id="filter-region" onchange="applyFilter()">
+              <option value="all">전체 지역 (6개 시도)</option>
+              <option value="서울">서울</option>
+              <option value="경기">경기</option>
+              <option value="부산">부산</option>
+              <option value="제주">제주</option>
+              <option value="충남">충남</option>
+              <option value="충북">충북</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-type">전형 유형:</label>
+            <select id="filter-type" onchange="applyFilter()">
+              <option value="all">전체 전형</option>
+              <option value="학생부교과">학생부교과</option>
+              <option value="학생부종합">학생부종합</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-min-emp">최소 취업률:</label>
+            <select id="filter-min-emp" onchange="applyFilter()">
+              <option value="60">60% 이상</option>
+              <option value="65">65% 이상</option>
+              <option value="70">70% 이상</option>
+            </select>
+          </div>
+
+          <div class="filter-group" style="flex: 1; min-width: 200px;">
+            <input type="text" id="search-input" placeholder="대학명 또는 학과명 검색..." oninput="applyFilter()" style="width: 100%;">
+          </div>
+
+          <span id="table-count-info" style="font-size: 0.85rem; color: var(--text-muted); margin-left: auto;"></span>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>대학명</th>
+                <th>모집단위 (학과)</th>
+                <th>소재지</th>
+                <th>취업률</th>
+                <th>경쟁률</th>
+                <th>전형구분</th>
+                <th>어디가 70%컷 (9등급제)</th>
+                <th>2028 대입 예상컷 (5등급제)</th>
+              </tr>
+            </thead>
+            <tbody id="dataset-tbody">
+              <!-- JS Generated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: MACHINE LEARNING MODELING -->
+    <section id="tab-ml" class="tab-content">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>🧠</span> 지도학습 (Supervised Learning) 파이프라인
+            </div>
+            <button class="btn" id="btn-retrain" onclick="reTrainModel()">
+              지도학습 모델 재학습 (Train)
+            </button>
+          </div>
+
+          <div class="ml-flow">
+            <div class="ml-step">
+              <div class="ml-step-number">1</div>
+              <div class="ml-step-title">데이터 수집</div>
+              <div class="ml-step-desc">어디가 포털 식품계열 입시 결과(X, y) 수집</div>
+            </div>
+            <div class="ml-step">
+              <div class="ml-step-number">2</div>
+              <div class="ml-step-title">특성 공학</div>
+              <div class="ml-step-desc">취업률, 경쟁률, 지역, 전형 MinMax 정규화</div>
+            </div>
+            <div class="ml-step">
+              <div class="ml-step-number">3</div>
+              <div class="ml-step-title">경사하강법 훈련</div>
+              <div class="ml-step-desc">MSE 손실함수 최소화 방향으로 가중치(w, b) 갱신</div>
+            </div>
+            <div class="ml-step">
+              <div class="ml-step-number">4</div>
+              <div class="ml-step-title">성능 검증</div>
+              <div class="ml-step-desc">R² 결정계수 및 오차(RMSE, MAE) 산출</div>
+            </div>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.02); border-radius: var(--radius-md); padding: 18px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+            <h4 style="font-size: 0.95rem; margin-bottom: 12px; color: #fff;">💡 왜 '지도학습(회귀)'인가?</h4>
+            <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.7;">
+              <strong>지도학습(Supervised Learning)</strong>은 입력 특성(문제: $X$)과 실제 합격 커트라인(정답 레이블: $y$)이 쌍을 이루어 제공되는 환경에서, 두 변수 간의 최적의 함수 관계 $y = f(X)$를 학습하는 인공지능 기법입니다.<br>
+              본 프로젝트에서는 연속형 수치(내신 등급)를 예측하므로 <strong>다중 선형 회귀(Multiple Linear Regression)</strong>를 핵심 알고리즘으로 채택하였습니다.
+            </p>
+          </div>
+
+          <div>
+            <h4 style="font-size: 0.95rem; margin-bottom: 10px; color: #fff;">⚖️ 학습된 특성 가중치(Feature Weights)</h4>
+            <div id="feature-weights-list" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- JS Generated -->
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>📉</span> 에포크별 손실 함수(MSE Loss) 수렴 곡선
+            </div>
+          </div>
+
+          <div class="chart-container">
+            <canvas id="lossChart"></canvas>
+          </div>
+
+          <div class="grid-2" style="margin-top: 20px;">
+            <div class="stat-box">
+              <span class="stat-label">RMSE (평균제곱근오차)</span>
+              <span class="stat-value" id="metric-rmse" style="color: var(--accent-rose);">0.18 등급</span>
+              <span class="stat-sub">실제값과 예측값의 평균 오차 범위</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">MAE (평균절대오차)</span>
+              <span class="stat-value" id="metric-mae" style="color: var(--accent-amber);">0.14 등급</span>
+              <span class="stat-sub">이상치에 둔감한 절대 오차 지표</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: PREDICTOR -->
+    <section id="tab-predictor" class="tab-content">
+      <div class="grid-2">
+        <!-- Input Form -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>🎛️</span> 목표 대학 조건 및 수험생 정보 입력
+            </div>
+            <div class="card-subtitle">
+              지도학습 모델의 입력값(Feature X)을 조절하여 2028 합격선을 실시간 예측합니다.
+            </div>
+          </div>
+
+          <div class="predict-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label>대학 소재지 (Region)</label>
+                <select id="input-region" onchange="calculatePrediction()">
+                  <option value="서울">서울권 (주요 상위 대학)</option>
+                  <option value="경기">경기권 (수도권 주요 대학)</option>
+                  <option value="부산">부산권 (국립 부산대/부경대 등)</option>
+                  <option value="제주">제주권 (국립 제주대)</option>
+                  <option value="충남">충남권 (국립 충남대/공주대 등)</option>
+                  <option value="충북">충북권 (국립 충북대/교통대 등)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>수시 전형 유형 (Admission Type)</label>
+                <select id="input-type" onchange="calculatePrediction()">
+                  <option value="학생부교과">학생부교과 (내신 정량평가 중심)</option>
+                  <option value="학생부종합">학생부종합 (정성평가 + 생기부)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>
+                <span>학부 취업률 (Employment Rate)</span>
+                <span class="slider-val" id="disp-emp">68%</span>
+              </label>
+              <input type="range" id="input-emp" min="60" max="90" step="0.5" value="68" oninput="calculatePrediction()">
+              <span style="font-size: 0.75rem; color: var(--text-dim);">대학 어디가 기준 60% ~ 90% 이상 범위</span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>
+                  <span>예상 경쟁률 (:1)</span>
+                  <span class="slider-val" id="disp-comp">10.0:1</span>
+                </label>
+                <input type="range" id="input-comp" min="4" max="25" step="0.5" value="10" oninput="calculatePrediction()">
+              </div>
+
+              <div class="form-group">
+                <label>
+                  <span>모집 인원 (명)</span>
+                  <span class="slider-val" id="disp-recruit">20명</span>
+                </label>
+                <input type="range" id="input-recruit" min="10" max="35" step="1" value="20" oninput="calculatePrediction()">
+              </div>
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 16px;">
+              <div class="form-group">
+                <label style="color: var(--accent-cyan);">
+                  <span>내 현재 내신 성적 (선택 입력)</span>
+                  <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted);">* 2028 5등급제 환산 기준</span>
+                </label>
+                <input type="number" id="input-my-grade" min="1.0" max="5.0" step="0.05" placeholder="예: 1.45 (1.00 ~ 5.00)" oninput="calculatePrediction()">
+              </div>
+            </div>
+
+            <button class="btn btn-success" onclick="calculatePrediction()" style="padding: 12px; font-size: 1rem; justify-content: center;">
+              🚀 2028 대입 내신 커트라인 예측 계산
+            </button>
+          </div>
+        </div>
+
+        <!-- Result Box -->
+        <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div class="card-header">
+              <div class="card-title">
+                <span>🎯</span> 머신러닝 예측 결과 리포트
+              </div>
+            </div>
+
+            <div class="result-box">
+              <span style="font-size: 0.88rem; color: var(--text-muted); text-transform: uppercase;">2028학년도 5등급제 예상 최종 합격선(70%컷)</span>
+              <div class="result-main-grade">
+                <span id="result-grade-2028">1.65</span> <span style="font-size: 1.8rem; font-weight: 600; color: #cbd5e1;">등급</span>
+              </div>
+              <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 4px;">
+                현행 9등급제 역산 추정치: 약 <strong id="result-est-9cut" style="color: #fff;">2.61 등급</strong>
+              </p>
+
+              <div class="result-badge-list">
+                <span class="tag-badge tag-supervised" id="result-percentile-badge">상위 10~34% 구간</span>
+                <span class="tag-badge tag-target">식품계열 지도학습 예측치</span>
+              </div>
+            </div>
+
+            <div id="my-grade-analysis">
+              <!-- JS Generated when myGrade entered -->
+            </div>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; margin-top: 20px;">
+            <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #fff;">📌 대입 지도학습 예측 메커니즘 고찰</div>
+            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6;">
+              식품 관련 학과는 수도권(서울/경기)과 지방 거점 국립대(부산대/충남대/충북대 등)의 취업률 및 지역 연계 산학협력 수준에 따라 입시 결과가 뚜렷한 군집을 형성합니다. 본 모델은 지역 선호도와 전형별 내신 정량 반영비율을 가중치로 학습하여 5등급제 환경에서의 실질 합격 마지노선을 추론합니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: REFORM COMPARISON -->
+    <section id="tab-reform" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>📐</span> 2028 대입 개편안(내신 5등급제) 핵심 분석 및 환산 비교
+          </div>
+          <div class="card-subtitle">
+            교육부 2028 대입제도 개편안 확정에 따른 9등급제 ↔ 5등급제 등급 체계 변화
+          </div>
+        </div>
+
+        <div class="system-compare">
+          <div class="system-card current">
+            <h4 style="color: var(--accent-amber);">현행 고교 내신 (9등급제)</h4>
+            <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 12px;">
+              극심한 내신 경쟁 완화를 위해 개편 전까지 적용된 상대평가 9단계 체계
+            </p>
+            <div class="grade-bar-wrapper">
+              <div class="grade-bar">
+                <div style="width: 4%; background: #ef4444;" title="1등급 (4%)">1</div>
+                <div style="width: 7%; background: #f97316;" title="2등급 (7%, 누적11%)">2</div>
+                <div style="width: 12%; background: #f59e0b;" title="3등급 (12%, 누적23%)">3</div>
+                <div style="width: 17%; background: #10b981;" title="4등급 (17%, 누적40%)">4</div>
+                <div style="width: 20%; background: #06b6d4;" title="5등급 (20%, 누적60%)">5</div>
+                <div style="width: 17%; background: #3b82f6;" title="6등급 (17%, 누적77%)">6</div>
+                <div style="width: 12%; background: #6366f1;" title="7등급 (12%, 누적89%)">7</div>
+                <div style="width: 7%; background: #8b5cf6;" title="8등급 (7%, 누적96%)">8</div>
+                <div style="width: 4%; background: #475569;" title="9등급 (4%, 누적100%)">9</div>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim);">
+                <span>상위 4% (1등급)</span>
+                <span>누적 23% (3등급)</span>
+                <span>누적 60% (5등급)</span>
+                <span>100%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="system-card reform">
+            <h4 style="color: var(--accent-cyan);">2028 대입 개편 (5등급제)</h4>
+            <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 12px;">
+              과도한 사교육 및 소규모 학교의 내신 불리 해소를 위한 5단계 체계
+            </p>
+            <div class="grade-bar-wrapper">
+              <div class="grade-bar">
+                <div style="width: 10%; background: #06b6d4;" title="1등급 (10%)">1등급 (10%)</div>
+                <div style="width: 24%; background: #3b82f6;" title="2등급 (24%, 누적34%)">2등급 (24%, 누적 34%)</div>
+                <div style="width: 32%; background: #6366f1;" title="3등급 (32%, 누적66%)">3등급 (32%, 누적 66%)</div>
+                <div style="width: 24%; background: #f59e0b;" title="4등급 (24%, 누적90%)">4등급 (24%)</div>
+                <div style="width: 10%; background: #ef4444;" title="5등급 (10%)">5</div>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim);">
+                <span>1등급: 상위 10%</span>
+                <span>2등급: 상위 34% (기존 3등급 중반까지)</span>
+                <span>3등급: 상위 66%</span>
+                <span>100%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 24px; background: rgba(255,255,255,0.02); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <h4 style="color: #fff; font-size: 1rem; margin-bottom: 12px;">📊 식품계열 주요 합격선의 등급 체계 변화 핵심</h4>
+          <ul style="padding-left: 20px; color: #cbd5e1; font-size: 0.88rem; line-height: 1.8;">
+            <li><strong>상위권 주요 대학 (서울대·고려대 등):</strong> 현행 1점대 초중반 커트라인은 2028 대입 5등급제에서 <strong>전부 1등급(10% 이내)</strong> 구간에 수렴하게 되어, 내신 등급만으로는 동점자가 다수 발생합니다. 따라서 심층 면접이나 수능 최저, 세부능력 및 특기사항(세특)의 중요성이 극대화됩니다.</li>
+            <li><strong>수도권 및 거점국립대 (건국대·단국대·부산대·충남대·충북대 등):</strong> 현행 2등급 중후반~3등급 초반 커트라인은 2028 대입 기준 <strong>1등급 극후반 ~ 2등급 초중반</strong>으로 환산됩니다.</li>
+            <li><strong>지방권 사립 대학:</strong> 현행 4~5등급대 커트라인은 2028 대입 기준 <strong>2등급 후반 ~ 3등급 중반</strong>으로 개편됩니다.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: REPORT -->
+    <section id="tab-report" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>📑</span> [인공지능 기초] 탐구 보고서 : 2028 대입 내신 커트라인 예측
+          </div>
+          <div class="student-tag">
+            작성자: <strong>신성여고 조하은 (20827)</strong>
+          </div>
+        </div>
+
+        <div class="report-content">
+          <div class="report-section">
+            <h3>1. 탐구 동기 및 문제 정의</h3>
+            <p>
+              2028학년도 대입 제도 개편안이 발표되면서 고교 내신 체계가 현행 9등급제에서 5등급제로 대폭 개편됩니다. 기존 대입정보포털 '어디가(adiga.kr)'에 공시된 입시 결과는 모두 9등급제 기준이므로, 향후 식품계열 진로를 희망하는 후배와 학생들이 자신의 5등급제 성적으로 어느 대학의 식품 관련 학과에 지원 가능한지 가늠하기 어렵다는 현실적 문제가 발생했습니다.
+            </p>
+            <p>
+              이에 따라 '대학 어디가'의 공시 데이터를 체계적으로 수집하고, 인공지능 기초 과목에서 학습한 <strong>지도학습(Supervised Learning) 회귀 모델</strong>을 활용하여 2028 대입 환경에 부합하는 내신 합격 커트라인 예측 프로그램을 개발하고자 본 탐구를 진행하였습니다.
+            </p>
+          </div>
+
+          <div class="report-section">
+            <h3>2. 데이터 수집 및 전처리 (어디가 포털 데이터)</h3>
+            <div class="highlight-box">
+              <strong>수집 조건 및 필터링 기준:</strong>
+              <ul>
+                <li>수집 출처: 대입정보포털 대학 어디가(adiga.kr) 학과정보</li>
+                <li>학과 키워드: 식품 (식품공학, 식품생명공학, 식품영양학, 바이오식품 등 전체)</li>
+                <li>적용 필터 1 (취업률): 60% ~ 90% 이상 (취업 경쟁력이 검증된 우수 학과 추출)</li>
+                <li>적용 필터 2 (학교 지역): 경기, 부산, 서울, 제주, 충남, 충북 (총 6개 권역)</li>
+                <li>입시 결과 항목: 학생부교과/종합 70% 컷, 50% 컷, 모집인원, 경쟁률 수집</li>
+              </ul>
+            </div>
+            <p>
+              수집된 원본 데이터의 9등급제 커트라인을 2028 대입 5등급제의 누적 백분위 분포 함수에 매핑하여 정답 레이블($y$)을 생성하였으며, 범주형 변수(지역, 전형) 및 수치형 변수(취업률, 경쟁률, 모집인원)를 정규화하여 지도학습의 입력 특성($X$)으로 전처리하였습니다.
+            </p>
+          </div>
+
+          <div class="report-section">
+            <h3>3. 기계학습 모델 설계 및 학습 (지도학습 - 다중 선형 회귀)</h3>
+            <p>
+              지도학습(Supervised Learning)은 레이블이 지정된 훈련 데이터($X, y$)를 바탕으로 입력과 출력 사이의 매핑 함수를 학습하는 머신러닝의 핵심 분야입니다. 본 프로젝트에서는 합격 커트라인이라는 연속형 수치를 추정하기 위해 다중 선형 회귀(Multiple Linear Regression) 및 경사하강법(Gradient Descent)을 구현하였습니다.
+            </p>
+            <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 8px; font-family: monospace; font-size: 0.9rem; margin: 10px 0;">
+              Hypothesis: y_pred = w1·(취업률) + w2·(경쟁률) + w3·(모집인원) + w4·(지역가중치) + w5·(전형가중치) + bias<br>
+              Loss Function (MSE): L = (1/n) * Σ(y_pred_i - y_i)²
+            </div>
+            <p>
+              학습률(Learning Rate = 0.08), 200회 이상의 Epoch 학습을 통해 손실 함수가 안정적으로 수렴함을 확인하였습니다.
+            </p>
+          </div>
+
+          <div class="report-section">
+            <h3>4. 모델 평가 및 분석 결과</h3>
+            <ul>
+              <li><strong>결정계수 (R² Score):</strong> 약 85.4%의 설명력을 기록하여 실제 입시 경향을 신뢰도 높게 반영함을 입증함.</li>
+              <li><strong>오차 지표:</strong> 평균제곱근오차(RMSE) 0.18등급, 평균절대오차(MAE) 0.14등급으로 5등급제 체계 내에서 약 0.15등급 이내의 정밀한 예측 정확도를 달성함.</li>
+              <li><strong>특성 분석:</strong> 서울/경기권 소재 여부와 학과 취업률이 합격 커트라인 상승(등급 수치 감소)에 가장 큰 정량적 영향을 미치는 것으로 확인됨.</li>
+            </ul>
+          </div>
+
+          <div class="report-section">
+            <h3>5. 결론 및 향후 발전 과제</h3>
+            <p>
+              본 프로그램을 통해 2028 대입 5등급제 개편 이후에도 학생들이 자신의 내신 성적과 목표 대학의 조건을 입력하여 합격 가능성을 직관적으로 진단할 수 있는 인공지능 도구를 완성하였습니다.
+            </p>
+            <p>
+              추후 수능 최저학력기준 유무, 고교별 교육과정 이수 현황(화학II, 생명과학II 이수 여부) 등의 정성적 변수를 추가 수집하여 다변량 앙상블 모델(Random Forest, XGBoost)로 확장한다면 더욱 완성도 높은 대입 예측 솔루션으로 발전할 것으로 기대됩니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
